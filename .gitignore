@@ -18,3 +18,13 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Secrets & tokens
+.env
+*.env
+*.pickle
+*.token
+credentials.json
+access_token.json
+token.json
+google_token.pickle

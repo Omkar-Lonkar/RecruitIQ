@@ -74,7 +74,7 @@ uvicorn app.main:app
 
 ---
 
-## ⚙️ Current Status
+## 📌 Current Status
 
 ✅ Multi-company database schema
 ✅ Recruiter signup/login (JWT-based)
@@ -87,7 +87,7 @@ uvicorn app.main:app
 
 ---
 
-## ⚙️ Academic Context
+## 🎓 Academic Context
 
 This project is developed as a Final Year Project focusing on:
 -Scalable backend design
