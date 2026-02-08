@@ -1,0 +1,14 @@
+python -m venv venv
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+.\venv\Scripts\Activate.ps1
+
+
+
+{
+  "company_name": "Acme Corp",
+  "company_domain": "acme.com",
+  "inbox_email": "jobs@acme.com",
+  "recruiter_full_name": "HR Lead",
+  "recruiter_email": "hr@acme.com",
+  "recruiter_password": "StrongPass123"
+}
