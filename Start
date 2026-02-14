@@ -12,3 +12,13 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
   "recruiter_email": "hr@acme.com",
   "recruiter_password": "StrongPass123"
 }
+
+{
+  "full_name": "Rahul Sharma",
+  "email": "rahul@example.com",
+  "phone": "9876543210",
+  "current_role": "Backend Developer",
+  "experience_years": 2.5,
+  "location": "Pune",
+  "source": "manual"
+}
