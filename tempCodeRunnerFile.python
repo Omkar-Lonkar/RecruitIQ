@@ -1,3 +1,0 @@
-import google.generativeai as genai
-genai.configure(api_key="AIzaSyD1WE-64ez0dCElgCOV4NxPo1jCXpB5n3M")
-print([m.name for m in genai.list_models()])
