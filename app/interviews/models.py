@@ -26,12 +26,20 @@ class InterviewMessage(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    interview_id = Column(UUID(as_uuid=True), ForeignKey("interviews.id"))
+    interview_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("interviews.id", ondelete="CASCADE"),
+        nullable=False
+    )
 
-    sender = Column(String)  # AI or CANDIDATE
-    message_text = Column(Text)
+    message_type = Column(String, nullable=False)
+    # QUESTION or ANSWER
 
-    question_number = Column(Integer)
+    content = Column(Text, nullable=False)
+
+    score = Column(Integer, nullable=True)
+
+    feedback = Column(Text, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -51,5 +59,26 @@ class InterviewScore(Base):
     weaknesses = Column(Text)
 
     followup_reason = Column(Text)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class InterviewReport(Base):
+    __tablename__ = "interview_reports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    interview_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("interviews.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    overall_score = Column(Integer)
+
+    strengths = Column(Text)
+
+    weaknesses = Column(Text)
+
+    recommendation = Column(String)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

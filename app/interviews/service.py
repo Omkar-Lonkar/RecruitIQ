@@ -1,10 +1,126 @@
-from app.interviews.models import Interview, InterviewMessage
+import re
+
+from app.interviews.models import Interview, InterviewMessage, InterviewReport
 from app.interviews.question_engine import generate_first_question
 from app.candidates.models import Candidate
 from app.resumes.models import Resume
 from app.resumes.models import ResumeParsedData
-
 from uuid import uuid4
+import json
+from app.interviews.models import Interview, InterviewMessage
+from app.core.gemini_client import evaluate_answer, generate_interview_report
+
+
+def submit_answer(db, interview_id, answer):
+
+    interview = db.query(Interview).filter(Interview.id == interview_id).first()
+
+    if not interview:
+        raise Exception("Interview not found")
+
+    # get last question
+    last_question = (
+        db.query(InterviewMessage)
+        .filter(
+            InterviewMessage.interview_id == interview_id,
+            InterviewMessage.message_type == "QUESTION"
+        )
+        .order_by(InterviewMessage.created_at.desc())
+        .first()
+    )
+
+    # store candidate answer
+    answer_message = InterviewMessage(
+        interview_id=interview_id,
+        message_type="ANSWER",
+        content=answer
+    )
+
+    db.add(answer_message)
+    db.flush()
+
+    # evaluate using AI
+    ai_response = evaluate_answer(last_question.content, answer)
+
+    try:
+        data = json.loads(ai_response)
+    except:
+    # fallback if Gemini adds formatting
+        import re
+        json_match = re.search(r"\{.*\}", ai_response, re.DOTALL)
+        if json_match:
+            data = json.loads(json_match.group())
+        else:
+            raise Exception("AI response parsing failed")
+
+    score = data["score"]
+    feedback = data["feedback"]
+    next_question = data["next_question"]
+
+    # update answer with evaluation
+    answer_message.score = score
+    answer_message.feedback = feedback
+
+    # stop after 5 questions
+    if interview.current_question_number >= 5:
+
+        messages = db.query(InterviewMessage).filter(
+            InterviewMessage.interview_id == interview_id
+        ).all()
+
+        transcript = ""
+
+        for m in messages:
+            transcript += f"{m.message_type}: {m.content}\n"
+
+        ai_report = generate_interview_report(transcript)
+
+        try:
+            data = json.loads(ai_report)
+        except:
+            json_match = re.search(r"\{.*\}", ai_report, re.DOTALL)
+            if json_match:
+                data = json.loads(json_match.group())
+            else:
+                raise Exception("AI report parsing failed")
+
+        report = InterviewReport(
+            interview_id=interview_id,
+            overall_score=data["overall_score"],
+            strengths=data["strengths"],
+            weaknesses=data["weaknesses"],
+            recommendation=data["recommendation"]
+        )
+
+        db.add(report)
+
+        interview.status = "COMPLETED"
+
+        db.commit()
+
+        return {
+            "interview_completed": True,
+            "report": data
+        }
+
+    # save next question
+    question_message = InterviewMessage(
+        interview_id=interview_id,
+        message_type="QUESTION",
+        content=next_question
+    )
+
+    db.add(question_message)
+
+    interview.current_question_number += 1
+
+    db.commit()
+
+    return {
+        "score": score,
+        "feedback": feedback,
+        "next_question": next_question
+    }
 
 
 def start_interview(db, recruiter, candidate_id, job_role, experience_level):
@@ -50,10 +166,9 @@ def start_interview(db, recruiter, candidate_id, job_role, experience_level):
     )
 
     message = InterviewMessage(
-        interview_id=interview.id,
-        sender="AI",
-        message_text=question,
-        question_number=1
+    interview_id=interview.id,
+    message_type="QUESTION",
+    content=question
     )
 
     db.add(message)
@@ -63,3 +178,4 @@ def start_interview(db, recruiter, candidate_id, job_role, experience_level):
     db.commit()
 
     return interview.id, question
+

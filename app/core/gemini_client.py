@@ -44,3 +44,56 @@ Resume:
 """
 
     return generate_content(prompt)
+
+
+def evaluate_answer(question, answer):
+
+    prompt = f"""
+You are a technical interviewer evaluating a candidate answer.
+
+Question:
+{question}
+
+Candidate Answer:
+{answer}
+
+Return ONLY valid JSON. Do not include explanations or markdown.
+
+Format:
+
+{{
+"score": number between 1 and 10,
+"feedback": "short feedback",
+"next_question": "next technical follow-up question"
+}}
+"""
+
+    response = model.generate_content(prompt)
+
+    return response.text.strip()
+
+
+def generate_interview_report(transcript):
+
+    prompt = f"""
+You are a senior technical interviewer.
+
+Below is an interview transcript.
+
+{transcript}
+
+Evaluate the candidate.
+
+Return JSON ONLY in this format:
+
+{{
+"overall_score": number between 1-10,
+"strengths": "key strengths",
+"weaknesses": "key weaknesses",
+"recommendation": "HIRE / CONSIDER / REJECT"
+}}
+"""
+
+    response = model.generate_content(prompt)
+
+    return response.text.strip()
