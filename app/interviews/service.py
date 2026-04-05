@@ -96,6 +96,12 @@ def submit_answer(db, interview_id, answer):
 
         interview.status = "COMPLETED"
 
+        candidate = db.query(Candidate).filter(
+            Candidate.id == interview.candidate_id
+        ).first()
+
+        candidate.status = "INTERVIEW_COMPLETED"
+
         db.commit()
 
         return {

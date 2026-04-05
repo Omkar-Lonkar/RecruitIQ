@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from uuid import UUID
 from datetime import datetime
-
+from typing import Optional, List, Dict, Any
 
 class CandidateCreateRequest(BaseModel):
     full_name: str
@@ -27,3 +27,29 @@ class CandidateResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ResumeData(BaseModel):
+    skills: Optional[List[str]] = None
+    education: Optional[List[Dict[str, Any]]] = None
+    work_experience: Optional[List[Dict[str, Any]]] = None
+    projects: Optional[List[Dict[str, Any]]] = None
+    certifications: Optional[List[Dict[str, Any]]] = None
+
+    class Config:
+        from_attributes = True
+
+
+class InterviewReport(BaseModel):
+    overall_score: Optional[int]
+    strengths: Optional[str]
+    weaknesses: Optional[str]
+    recommendation: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class CandidateDetailResponse(CandidateResponse):
+    resume: Optional[ResumeData] = None
+    interview_report: Optional[InterviewReport] = None

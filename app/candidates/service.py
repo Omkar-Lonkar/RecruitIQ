@@ -1,12 +1,14 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
+from app.candidates.models import Candidate
+from app.resumes.models import Resume, ResumeParsedData
+from app.interviews.models import Interview, InterviewReport
 from uuid import UUID
 
 from app.candidates.models import Candidate
 
 
 def create_candidate(db: Session, recruiter, data):
-    # Enforce uniqueness per company
     existing = (
         db.query(Candidate)
         .filter(
@@ -49,17 +51,43 @@ def list_candidates(db: Session, recruiter):
     )
 
 
-def get_candidate(db: Session, recruiter, candidate_id: UUID):
-    candidate = (
-        db.query(Candidate)
-        .filter(
-            Candidate.id == candidate_id,
-            Candidate.company_id == recruiter.company_id,
-        )
-        .first()
-    )
+# ✅ FIXED ORDER
+def get_candidate(db, candidate_id, recruiter):
+    
+    # 1. Get candidate
+    candidate = db.query(Candidate).filter(
+        Candidate.id == candidate_id,
+        Candidate.company_id == recruiter.company_id
+    ).first()
 
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
-    return candidate
+    # 2. Get resume
+    resume = db.query(Resume).filter(
+        Resume.candidate_id == candidate.id
+    ).first()
+
+    parsed_data = None
+    if resume:
+        parsed_data = db.query(ResumeParsedData).filter(
+            ResumeParsedData.resume_id == resume.id
+        ).first()
+
+    # 3. Get latest interview
+    interview = db.query(Interview).filter(
+        Interview.candidate_id == candidate.id
+    ).order_by(Interview.created_at.desc()).first()
+
+    report = None
+    if interview:
+        report = db.query(InterviewReport).filter(
+            InterviewReport.interview_id == interview.id
+        ).first()
+
+    # 4. Return structured response
+    return {
+        **candidate.__dict__,
+        "resume": parsed_data,
+        "interview_report": report
+    }
