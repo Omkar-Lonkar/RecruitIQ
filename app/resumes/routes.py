@@ -7,10 +7,10 @@ from app.auth.dependencies import get_current_recruiter
 from app.resumes.schemas import ResumeParsedResponse, ResumeResponse
 from app.resumes.service import upload_resume, parse_resume
 
-router = APIRouter(prefix="/candidates", tags=["resumes"])
+router = APIRouter(tags=["resumes"])
 
 
-@router.post("/{candidate_id}/resume", response_model=ResumeResponse)
+@router.post("/resume", response_model=ResumeResponse)
 def upload_resume_endpoint(
     candidate_id: UUID,
     file: UploadFile = File(...),
@@ -20,7 +20,7 @@ def upload_resume_endpoint(
     return upload_resume(db, recruiter, candidate_id, file)
 
 
-@router.post("/resumes/{resume_id}/parse",
+@router.post("/{resume_id}/parse",
              response_model=ResumeParsedResponse)
 def parse_resume_endpoint(
     resume_id: UUID,

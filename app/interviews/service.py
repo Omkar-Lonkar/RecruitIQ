@@ -1,13 +1,11 @@
 import re
+import json
+from uuid import uuid4
 
 from app.interviews.models import Interview, InterviewMessage, InterviewReport
 from app.interviews.question_engine import generate_first_question
 from app.candidates.models import Candidate
-from app.resumes.models import Resume
-from app.resumes.models import ResumeParsedData
-from uuid import uuid4
-import json
-from app.interviews.models import Interview, InterviewMessage
+from app.resumes.models import Resume, ResumeParsedData
 from app.core.gemini_client import evaluate_answer, generate_interview_report
 
 
@@ -18,7 +16,7 @@ def submit_answer(db, interview_id, answer):
     if not interview:
         raise Exception("Interview not found")
 
-    # get last question
+    # -------- GET LAST QUESTION --------
     last_question = (
         db.query(InterviewMessage)
         .filter(
@@ -29,7 +27,7 @@ def submit_answer(db, interview_id, answer):
         .first()
     )
 
-    # store candidate answer
+    # -------- STORE ANSWER --------
     answer_message = InterviewMessage(
         interview_id=interview_id,
         message_type="ANSWER",
@@ -39,29 +37,41 @@ def submit_answer(db, interview_id, answer):
     db.add(answer_message)
     db.flush()
 
-    # evaluate using AI
+    # -------- AI EVALUATION --------
     ai_response = evaluate_answer(last_question.content, answer)
 
     try:
-        data = json.loads(ai_response)
-    except:
-    # fallback if Gemini adds formatting
-        import re
-        json_match = re.search(r"\{.*\}", ai_response, re.DOTALL)
-        if json_match:
-            data = json.loads(json_match.group())
-        else:
-            raise Exception("AI response parsing failed")
+        if not ai_response or len(ai_response.strip()) < 10:
+            raise Exception("Empty AI response")
 
-    score = data["score"]
-    feedback = data["feedback"]
-    next_question = data["next_question"]
+        try:
+            data = json.loads(ai_response)
+        except:
+            match = re.search(r"\{.*\}", ai_response, re.DOTALL)
+            if match:
+                data = json.loads(match.group())
+            else:
+                raise Exception("Invalid JSON from AI")
 
-    # update answer with evaluation
+    except Exception as e:
+        print("AI RAW OUTPUT:", ai_response)
+        print("ERROR:", str(e))
+
+        data = {
+            "score": 5,
+            "feedback": "Evaluation failed",
+            "next_question": "Can you explain one project you worked on?"
+        }
+
+    score = data.get("score", 5)
+    feedback = data.get("feedback", "")
+    next_question = data.get("next_question", "Tell me about your experience.")
+
+    # -------- SAVE EVALUATION --------
     answer_message.score = score
     answer_message.feedback = feedback
 
-    # stop after 5 questions
+    # -------- COMPLETE AFTER 5 QUESTIONS --------
     if interview.current_question_number >= 5:
 
         messages = db.query(InterviewMessage).filter(
@@ -69,27 +79,41 @@ def submit_answer(db, interview_id, answer):
         ).all()
 
         transcript = ""
-
         for m in messages:
             transcript += f"{m.message_type}: {m.content}\n"
 
         ai_report = generate_interview_report(transcript)
 
         try:
-            data = json.loads(ai_report)
-        except:
-            json_match = re.search(r"\{.*\}", ai_report, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group())
-            else:
-                raise Exception("AI report parsing failed")
+            if not ai_report or len(ai_report.strip()) < 10:
+                raise Exception("Empty AI report")
+
+            try:
+                data = json.loads(ai_report)
+            except:
+                match = re.search(r"\{.*\}", ai_report, re.DOTALL)
+                if match:
+                    data = json.loads(match.group())
+                else:
+                    raise Exception("Invalid JSON from AI report")
+
+        except Exception as e:
+            print("AI REPORT RAW:", ai_report)
+            print("ERROR:", str(e))
+
+            data = {
+                "overall_score": 5,
+                "strengths": "Could not evaluate",
+                "weaknesses": "AI parsing failed",
+                "recommendation": "CONSIDER"
+            }
 
         report = InterviewReport(
             interview_id=interview_id,
-            overall_score=data["overall_score"],
-            strengths=data["strengths"],
-            weaknesses=data["weaknesses"],
-            recommendation=data["recommendation"]
+            overall_score=data.get("overall_score", 5),
+            strengths=data.get("strengths", ""),
+            weaknesses=data.get("weaknesses", ""),
+            recommendation=data.get("recommendation", "CONSIDER")
         )
 
         db.add(report)
@@ -109,7 +133,7 @@ def submit_answer(db, interview_id, answer):
             "report": data
         }
 
-    # save next question
+    # -------- NEXT QUESTION --------
     question_message = InterviewMessage(
         interview_id=interview_id,
         message_type="QUESTION",
@@ -139,24 +163,25 @@ def start_interview(db, recruiter, candidate_id, job_role, experience_level):
     if not candidate:
         raise Exception("Candidate not found")
 
-    # Step 1: get candidate resume
+    # -------- GET RESUME --------
     resume = db.query(Resume).filter(
         Resume.candidate_id == candidate.id
     ).order_by(Resume.uploaded_at.desc()).first()
 
     skills = []
 
-# Step 2: get parsed resume data
+    # -------- GET PARSED DATA --------
+    parsed_resume = None
+
     if resume:
         parsed_resume = db.query(ResumeParsedData).filter(
             ResumeParsedData.resume_id == resume.id
         ).first()
 
-        if parsed_resume and parsed_resume.skills:
-            skills = parsed_resume.skills
+    if parsed_resume and parsed_resume.skills:
+        skills = parsed_resume.skills
 
-    skills = parsed_resume.skills if parsed_resume else []
-
+    # -------- CREATE INTERVIEW --------
     interview = Interview(
         candidate_id=candidate.id,
         company_id=recruiter.company_id
@@ -165,6 +190,7 @@ def start_interview(db, recruiter, candidate_id, job_role, experience_level):
     db.add(interview)
     db.flush()
 
+    # -------- FIRST QUESTION --------
     question = generate_first_question(
         job_role,
         experience_level,
@@ -172,9 +198,9 @@ def start_interview(db, recruiter, candidate_id, job_role, experience_level):
     )
 
     message = InterviewMessage(
-    interview_id=interview.id,
-    message_type="QUESTION",
-    content=question
+        interview_id=interview.id,
+        message_type="QUESTION",
+        content=question
     )
 
     db.add(message)
@@ -183,5 +209,8 @@ def start_interview(db, recruiter, candidate_id, job_role, experience_level):
 
     db.commit()
 
-    return interview.id, question
-
+    return {
+    "interview_id": str(interview.id),
+    "question": question,
+    "link": f"http://localhost:8501/?interview_id={interview.id}"
+}

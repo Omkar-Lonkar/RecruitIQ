@@ -26,22 +26,44 @@ def parse_resume_with_gemini(resume_text: str) -> str:
     """
 
     prompt = f"""
-Extract structured information from this resume.
+    You are an expert resume parser.
 
-Return ONLY valid JSON.
+    Extract structured data in STRICT JSON format.
 
-Schema:
-{{
-  "skills": [],
-  "education": [],
-  "work_experience": [],
-  "projects": [],
-  "certifications": []
-}}
+    Rules:
+    - Output ONLY JSON
+    - Do NOT include explanations
+    - Do NOT skip project descriptions
+    - If description exists → include it fully
 
-Resume:
-{resume_text}
-"""
+    Schema:
+    {{
+    "skills": [string],
+
+    "education": [string],
+
+    "work_experience": [string],
+
+    "projects": [
+        {{
+        "title": string,
+        "description": string
+        }}
+    ],
+
+    "certifications": [string]
+    }}
+
+    Important instructions:
+    - Each project MUST have both title AND description
+    - Do NOT return project title alone
+    - Combine multiple lines into one meaningful description
+    - Ignore unrelated text
+    - Clean and concise output
+
+    Resume:
+    {resume_text}
+    """
 
     return generate_content(prompt)
 
@@ -70,7 +92,11 @@ Format:
 
     response = model.generate_content(prompt)
 
-    return response.text.strip()
+    try:
+        return response.candidates[0].content.parts[0].text
+    except Exception:
+        print("Full Gemini response:", response)
+        return ""
 
 
 def generate_interview_report(transcript):

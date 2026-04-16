@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RecruitIQ Dashboard</title>
+</head>
+<body>
+
+<h1>RecruitIQ Dashboard</h1>
+
+<button onclick="loadCandidates()">Load Candidates</button>
+
+<div id="candidates"></div>
+
+<hr>
+
+<div id="details"></div>
+
+<script>
+
+const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiZTAxMzlhZS0wOGMzLTRhODItYTNhZS0xMjBmOGM3MzE0NDYiLCJjb21wYW55X2lkIjoiZjkxOTZmMGYtMzk1Yy00NzBmLWFjNjAtMGUzMGFlNzA5YTUwIiwiZXhwIjoxNzc1NDk1NzExfQ.4X1-YeStPVCBX03ZDavps5uaR86bxJE1leHj5Kh-Y8U"; // 🔴 replace this
+
+async function loadCandidates() {
+    const res = await fetch("http://127.0.0.1:8000/candidates/", {
+        headers: {
+            "Authorization": "Bearer " + TOKEN
+        }
+    });
+
+    const data = await res.json();
+
+    const container = document.getElementById("candidates");
+    container.innerHTML = "";
+
+    data.forEach(c => {
+        container.innerHTML += `
+            <div>
+                <b>${c.full_name}</b> (${c.status})
+                <button onclick="loadDetails('${c.id}')">View</button>
+            </div>
+        `;
+    });
+}
+
+async function loadDetails(id) {
+    const res = await fetch(`http://127.0.0.1:8000/candidates/${id}`, {
+        headers: {
+            "Authorization": "Bearer " + TOKEN
+        }
+    });
+
+    const data = await res.json();
+
+    const container = document.getElementById("details");
+
+    container.innerHTML = `
+        <h2>${data.full_name}</h2>
+        <p>Status: ${data.status}</p>
+
+        <h3>Skills</h3>
+        <p>${data.resume?.skills?.join(", ") || "N/A"}</p>
+
+        <h3>Score</h3>
+        <p>${data.interview_report?.overall_score || "N/A"}</p>
+
+        <h3>Recommendation</h3>
+        <p>${data.interview_report?.recommendation || "N/A"}</p>
+    `;
+}
+
+</script>
+
+</body>
+</html>

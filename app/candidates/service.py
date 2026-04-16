@@ -51,43 +51,37 @@ def list_candidates(db: Session, recruiter):
     )
 
 
-# ✅ FIXED ORDER
 def get_candidate(db, candidate_id, recruiter):
-    
-    # 1. Get candidate
+
     candidate = db.query(Candidate).filter(
         Candidate.id == candidate_id,
-        Candidate.company_id == recruiter.company_id
-    ).first()
+        Candidate.company_id == recruiter.company_id   # ✅ CORRECT
+    ).first()       
 
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
-    # 2. Get resume
+    # ✅ Get latest resume
     resume = db.query(Resume).filter(
         Resume.candidate_id == candidate.id
-    ).first()
+    ).order_by(Resume.uploaded_at.desc()).first()
 
     parsed_data = None
+
     if resume:
         parsed_data = db.query(ResumeParsedData).filter(
             ResumeParsedData.resume_id == resume.id
         ).first()
 
-    # 3. Get latest interview
-    interview = db.query(Interview).filter(
-        Interview.candidate_id == candidate.id
-    ).order_by(Interview.created_at.desc()).first()
+    # ✅ Get latest interview report
+    report = db.query(InterviewReport)\
+        .join(Interview, Interview.id == InterviewReport.interview_id)\
+        .filter(Interview.candidate_id == candidate.id)\
+        .order_by(Interview.created_at.desc())\
+        .first()
 
-    report = None
-    if interview:
-        report = db.query(InterviewReport).filter(
-            InterviewReport.interview_id == interview.id
-        ).first()
-
-    # 4. Return structured response
     return {
         **candidate.__dict__,
-        "resume": parsed_data,
-        "interview_report": report
+        "resume": parsed_data.__dict__ if parsed_data else None,
+        "interview_report": report.__dict__ if report else None
     }
