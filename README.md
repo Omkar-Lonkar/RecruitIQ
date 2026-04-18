@@ -70,7 +70,39 @@ uvicorn app.main:app
 
 
 ```
+### 1. Clone the repository
 
+git clone <your-repo-link>
+cd RecruitIQ
+
+### 2. Create virtual environment
+
+python -m venv venv
+venv\Scripts\activate
+
+### 3. Install dependencies
+
+pip install -r requirements.txt
+
+### 4. Setup environment variables
+
+Copy `.env.example` and create `.env`:
+
+copy .env.example .env
+
+Then fill your own values:
+
+- DATABASE_URL
+- GEMINI_API_KEY
+- SECRET_KEY
+
+### 5. Run backend
+
+uvicorn main:app --reload
+
+### 6. Run frontend
+
+streamlit run frontend.py
 
 ---
 
