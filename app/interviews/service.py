@@ -16,6 +16,10 @@ def submit_answer(db, interview_id, answer):
     if not interview:
         raise Exception("Interview not found")
 
+    # 🔥 BLOCK REUSE OF INTERVIEW
+    if interview.status == "COMPLETED":
+        raise Exception("Interview already completed. Cannot submit more answers.")
+
     # -------- GET LAST QUESTION --------
     last_question = (
         db.query(InterviewMessage)
@@ -26,6 +30,9 @@ def submit_answer(db, interview_id, answer):
         .order_by(InterviewMessage.created_at.desc())
         .first()
     )
+
+    if not last_question:
+        raise Exception("No question found for this interview")
 
     # -------- STORE ANSWER --------
     answer_message = InterviewMessage(
@@ -118,13 +125,15 @@ def submit_answer(db, interview_id, answer):
 
         db.add(report)
 
+        # 🔥 MARK INTERVIEW COMPLETED
         interview.status = "COMPLETED"
 
         candidate = db.query(Candidate).filter(
             Candidate.id == interview.candidate_id
         ).first()
 
-        candidate.status = "INTERVIEW_COMPLETED"
+        if candidate:
+            candidate.status = "INTERVIEW_COMPLETED"
 
         db.commit()
 

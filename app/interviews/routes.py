@@ -35,8 +35,9 @@ def get_interview(interview_id: str, db: Session = Depends(get_db)):
     )
 
     return {
-        "question": last_question.content if last_question else "No question found"
-    }
+    "question": last_question.content if last_question else "",
+    "status": interview.status
+}
 
 @router.post("/start", response_model=InterviewStartResponse)
 def start_interview_endpoint(

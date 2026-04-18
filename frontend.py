@@ -6,13 +6,79 @@ BASE_URL = "http://127.0.0.1:8000"
 st.set_page_config(page_title="RecruitIQ Dashboard", layout="wide")
 st.title("RecruitIQ - AI Interview Dashboard")
 
-# 🔐 LOGIN
+# ================= MODE =================
+mode = st.sidebar.selectbox(
+    "Select Mode",
+    ["Recruiter", "Candidate"]
+)
+
+
+# ================= CANDIDATE MODE =================
+if mode == "Candidate":
+
+    st.title("Candidate Interview Portal")
+
+    interview_id = st.text_input("Enter Interview ID", key="candidate_interview_id")
+
+    if "candidate_interview" not in st.session_state:
+        st.session_state["candidate_interview"] = None
+
+    if interview_id and st.button("Start Interview", key="candidate_start"):
+        res = requests.get(f"{BASE_URL}/interviews/{interview_id}")
+
+        if res.status_code == 200:
+            data = res.json()
+
+            if data.get("status") == "COMPLETED":
+                st.error("This interview is already completed.")
+                st.stop()
+
+            st.session_state["candidate_interview"] = {
+                "id": interview_id,
+                "question": data.get("question")
+            }
+        else:
+            st.error("Invalid Interview ID")
+
+    if st.session_state["candidate_interview"]:
+
+        st.write("### Question:")
+        st.write(st.session_state["candidate_interview"]["question"])
+
+        answer = st.text_area("Your Answer", key="candidate_answer")
+
+        if st.button("Submit Answer", key="submit_answer"):
+
+            res = requests.post(
+                f"{BASE_URL}/interviews/{interview_id}/answer",
+                json={"answer": answer}
+            )
+
+            if res.status_code == 200:
+                result = res.json()
+
+                if result.get("interview_completed"):
+                    st.success("Interview Completed")
+                    st.markdown("### ✅ Your responses have been submitted successfully.")
+                    st.markdown("Our team will review your performance and get back to you.")
+
+                    st.session_state["candidate_interview"] = None
+                else:
+                    st.session_state["candidate_interview"]["question"] = result.get("next_question")
+            else:
+                st.error(res.text)
+
+    st.stop()
+    
+    
+
+# ================= RECRUITER LOGIN =================
 st.sidebar.header("Login")
 
-email = st.sidebar.text_input("Email")
-password = st.sidebar.text_input("Password", type="password")
+email = st.sidebar.text_input("Email", key="login_email")
+password = st.sidebar.text_input("Password", type="password", key="login_password")
 
-if st.sidebar.button("Login"):
+if st.sidebar.button("Login", key="login_button"):
     res = requests.post(f"{BASE_URL}/auth/login", json={
         "email": email,
         "password": password
@@ -28,11 +94,9 @@ if "token" not in st.session_state:
     st.warning("Please login first")
     st.stop()
 
-headers = {
-    "Authorization": f"Bearer {st.session_state['token']}"
-}
-
-# 🔄 NAVIGATION
+headers = {"Authorization": f"Bearer {st.session_state['token']}"}
+    
+# ================= NAVIGATION =================
 page = st.sidebar.radio(
     "Navigation",
     ["Dashboard", "Candidates", "Add Candidate"]
@@ -223,7 +287,7 @@ if "selected_candidate" in st.session_state:
     if data.get("status") == "INTERVIEW_COMPLETED":
         st.success("Interview already completed")
     else:
-        if st.button("Start Interview"):
+        if st.button("Start Interview", key="recruiter_start"):
             res = requests.post(
                 f"{BASE_URL}/interviews/start",
                 json={
@@ -243,6 +307,9 @@ if "selected_candidate" in st.session_state:
                 }
 
                 st.success("Interview started")
+
+                st.code(f"Interview ID: {interview_data['interview_id']}")
+                st.info("Share this ID with the candidate")
             else:
                 st.error(res.text)
 
@@ -256,7 +323,7 @@ if "interview" in st.session_state:
 
     answer = st.text_area("Your Answer")
 
-    if st.button("Submit Answer"):
+    if st.button("Submit Answer", key="submit_answer"):
 
         res = requests.post(
             f"{BASE_URL}/interviews/{st.session_state['interview']['id']}/answer",
