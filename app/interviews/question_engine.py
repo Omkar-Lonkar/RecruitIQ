@@ -4,7 +4,7 @@ from app.core.gemini_client import generate_content
 def generate_first_question(role, experience, skills):
 
     prompt = f"""
-You are a senior technical interviewer.
+You are a technical interviewer.
 
 Generate ONE realistic scenario-based interview question.
 

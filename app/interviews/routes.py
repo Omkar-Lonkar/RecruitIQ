@@ -45,7 +45,7 @@ def start_interview_endpoint(
     recruiter=Depends(get_current_recruiter)
 ):
 
-    interview_id, question = start_interview(
+    result = start_interview(
         db,
         recruiter,
         payload.candidate_id,
@@ -53,7 +53,4 @@ def start_interview_endpoint(
         payload.experience_level
     )
 
-    return {
-        "interview_id": interview_id,
-        "first_question": question
-    }
+    return result

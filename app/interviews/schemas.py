@@ -10,4 +10,5 @@ class InterviewStartRequest(BaseModel):
 
 class InterviewStartResponse(BaseModel):
     interview_id: UUID
-    first_question: str
+    question: str
+    

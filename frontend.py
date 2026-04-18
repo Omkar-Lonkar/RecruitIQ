@@ -1,15 +1,10 @@
 import streamlit as st
 import requests
 
-
 BASE_URL = "http://127.0.0.1:8000"
 
 st.set_page_config(page_title="RecruitIQ Dashboard", layout="wide")
-
 st.title("RecruitIQ - AI Interview Dashboard")
-# -------- HANDLE INTERVIEW LINK --------
-query_params = st.query_params
-interview_id_from_url = query_params.get("interview_id")
 
 # 🔐 LOGIN
 st.sidebar.header("Login")
@@ -71,15 +66,11 @@ if page == "Dashboard":
         col3.metric("Interview Completed", completed)
         col4.metric("New", new)
 
-    else:
-        st.info("Click 'Refresh Data' to load candidates")
-
 # ================= CANDIDATES =================
 if page == "Candidates":
 
     st.subheader("Candidate List")
 
-    # ✅ LOAD BUTTON (prevents crash)
     if "candidates" not in st.session_state:
         if st.button("Load Candidates"):
             res = requests.get(f"{BASE_URL}/candidates/", headers=headers)
@@ -91,7 +82,6 @@ if page == "Candidates":
 
         st.stop()
 
-    # ✅ CARD UI
     for c in st.session_state["candidates"]:
 
         with st.container():
@@ -179,7 +169,7 @@ if "selected_candidate" in st.session_state:
         else:
             st.warning("No interview report yet")
 
-# -------- UPLOAD RESUME --------
+    # -------- UPLOAD RESUME --------
     st.subheader("Resume")
 
     if data.get("resume"):
@@ -197,11 +187,11 @@ if "selected_candidate" in st.session_state:
             }
 
             res = requests.post(
-            f"{BASE_URL}/resumes/resume",
-            params={"candidate_id": data["id"]},   # ✅ THIS IS IMPORTANT
-            files=files,
-            headers=headers
-        )
+                f"{BASE_URL}/resumes/resume",
+                params={"candidate_id": data["id"]},
+                files=files,
+                headers=headers
+            )
 
             if res.status_code == 200:
 
@@ -226,58 +216,7 @@ if "selected_candidate" in st.session_state:
 
             else:
                 st.error(res.text)
-    if interview_id_from_url:
 
-        st.title("Candidate Interview")
-
-        if "interview" not in st.session_state:
-        # fetch interview first question
-            res = requests.get(
-                f"{BASE_URL}/interviews/{interview_id_from_url}",
-                headers=headers
-            )
-
-            if res.status_code == 200:
-                data = res.json()
-
-                st.session_state["interview"] = {
-                    "id": interview_id_from_url,
-                    "question": data.get("question")
-                }
-            else:
-                st.error("Invalid interview link")
-                st.stop()
-
-        st.write("### Question:")
-        st.write(st.session_state["interview"]["question"])
-
-        answer = st.text_area("Your Answer")
-
-    if st.button("Submit Answer"):
-
-        res = requests.post(
-            f"{BASE_URL}/interviews/{interview_id_from_url}/answer",
-            json={"answer": answer}
-        )
-
-        if res.status_code == 200:
-            result = res.json()
-
-            if result.get("interview_completed"):
-                st.success("Interview Completed")
-
-                report = result.get("report")
-                st.write("### Result")
-                st.write(report)
-
-                del st.session_state["interview"]
-            else:
-                st.session_state["interview"]["question"] = result.get("next_question")
-        else:
-            st.error(res.text)
-
-    st.stop()
-    
     # -------- START INTERVIEW --------
     st.subheader("Interview")
 
@@ -296,22 +235,17 @@ if "selected_candidate" in st.session_state:
             )
 
             if res.status_code == 200:
-                print("INTERVIEW RESPONSE:", res.json())
                 interview_data = res.json()
 
                 st.session_state["interview"] = {
                     "id": interview_data["interview_id"],
-                    "question": interview_data.get("question") or interview_data.get("first_question")
+                    "question": interview_data["question"]
                 }
 
                 st.success("Interview started")
-
-                link = f"http://localhost:8501/?interview_id={interview_data['interview_id']}"
-
-                st.write("### Share this link with candidate:")
-                st.code(link)
             else:
                 st.error(res.text)
+
 # ================= INTERVIEW =================
 if "interview" in st.session_state:
 

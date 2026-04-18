@@ -211,6 +211,5 @@ def start_interview(db, recruiter, candidate_id, job_role, experience_level):
 
     return {
     "interview_id": str(interview.id),
-    "question": question,
-    "link": f"http://localhost:8501/?interview_id={interview.id}"
+    "question": question
 }
